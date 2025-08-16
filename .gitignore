@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+dist/
+build/
+*.egg-info/
+htmlcov/
+
+# Node.js
+node_modules/
+dist/
+coverage/
+
+# VSCode
+.vscode/
+
+# Mac
+.DS_Store

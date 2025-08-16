@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Lint with flake8
+      run: |
+        flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+    
+    - name: Format check with black
+      run: black --check src tests
+    
+    - name: Type check with mypy
+      run: mypy src
+    
+    - name: Test with pytest
+      run: |
+        pytest --cov=src --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: python
+        name: codecov-python
+
+  test-typescript:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Lint with ESLint
+      run: npm run lint
+    
+    - name: Format check with Prettier
+      run: npx prettier --check src/**/*.ts
+    
+    - name: Type check
+      run: npx tsc --noEmit
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Test with Jest
+      run: npm run test:coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: typescript
+        name: codecov-typescript
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Python Security Audit
+      uses: pypa/gh-action-pip-audit@v1.0.8
+      with:
+        inputs: pyproject.toml
+    
+    - name: Node.js Security Audit
+      run: |
+        npm audit --audit-level moderate
+
+  publish-test:
+    needs: [test-python, test-typescript, security-audit]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        registry-url: 'https://registry.npmjs.org'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip build twine
+        npm ci
+    
+    - name: Build Python package
+      run: python -m build
+    
+    - name: Build TypeScript package
+      run: npm run build
+    
+    - name: Test Python package installation
+      run: |
+        pip install dist/*.whl
+        python -c "import pl_toolkit; print('Package import successful')"
+    
+    - name: Test TypeScript package
+      run: npm pack

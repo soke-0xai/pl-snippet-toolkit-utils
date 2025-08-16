@@ -1,0 +1,12 @@
+File Path,Content Type,Lines,Description
+pyproject.toml,Configuration,51,Python project configuration
+package.json,Configuration,52,Node.js project configuration
+LICENSE,License,22,MIT License
+src/csv_processor.py,Python Code,135,CSV processing utilities
+src/chart_generator.py,Python Code,261,Chart generation utilities
+src/api_client.py,Python Code,325,REST API client
+src/jsonValidator.ts,TypeScript Code,240,JSON validation utilities
+src/graphqlClient.ts,TypeScript Code,510,GraphQL client
+README.md,Documentation,267,Project documentation
+.github/workflows/ci.yml,CI Configuration,150,GitHub Actions workflow
+scripts/publish.sh,Shell Script,134,Repository publication script
